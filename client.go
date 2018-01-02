@@ -1,10 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 
 	ui "github.com/gizak/termui"
 )
+
+type promptType int
+
+const (
+	numberOfPlayersPrompt promptType = iota
+	playerNamePrompt
+	startingChipsPrompt
+)
+
+var currentPrompt promptType
+var numberOfPlayers int
+var currentPlayerToName int
+var playerNames []string
+var startingChips int
 
 func main() {
 	err := ui.Init()
@@ -15,7 +31,7 @@ func main() {
 
 	p := ui.NewPar("_")
 	p.TextFgColor = ui.ColorWhite
-	p.BorderLabel = "Text Box"
+	p.BorderLabel = promptString(currentPrompt)
 	p.BorderFg = ui.ColorCyan
 	p.Height = 3
 
@@ -40,8 +56,9 @@ func main() {
 		if newInput == "<space>" {
 			inputString = inputString + " "
 		} else if newInput == "C-8" {
-			l := len(inputString)
-			inputString = inputString[:l-1]
+			if l := len(inputString); l > 0 {
+				inputString = inputString[:l-1]
+			}
 		} else if isAlphanumeric(newInput) {
 			inputString = inputString + newInput
 		} else {
@@ -54,10 +71,11 @@ func main() {
 	})
 
 	ui.Handle("/sys/kbd/<enter>", func(ui.Event) {
-		p.BorderLabel = "Ello"
-		ui.Body.Align()
+		handleInput(inputString)
+		inputString = ""
+		p.Text = "_"
+		p.BorderLabel = promptString(currentPrompt)
 		ui.Render(ui.Body)
-		ui.StopLoop()
 	})
 
 	ui.Handle("/sys/wnd/resize", func(ui.Event) {
@@ -67,4 +85,65 @@ func main() {
 	})
 
 	ui.Loop()
+}
+
+func handleInput(s string) {
+	if s == "exit" {
+		ui.StopLoop()
+	}
+
+	switch currentPrompt {
+	case numberOfPlayersPrompt:
+		getNumberOfPlayers(s)
+	case playerNamePrompt:
+		getPlayerName(s)
+	case startingChipsPrompt:
+		getStartingChips(s)
+	}
+
+}
+
+func getNumberOfPlayers(s string) {
+	val, err := strconv.Atoi(s)
+	if err != nil || val < 2 || val > 10 {
+		numberOfPlayers = -1
+	} else {
+		numberOfPlayers = val
+		playerNames = make([]string, val)
+		currentPrompt++
+	}
+}
+
+func getPlayerName(s string) {
+	l := len(s)
+	if l > 0 && l < 20 {
+		playerNames[currentPlayerToName] = s
+		currentPlayerToName++
+	}
+	if currentPlayerToName == numberOfPlayers {
+		currentPrompt++
+	}
+}
+
+func getStartingChips(s string) {
+	val, err := strconv.Atoi(s)
+	if err != nil || val <= 0 {
+		startingChips = -1
+	} else {
+		startingChips = val
+		currentPrompt++
+	}
+}
+
+func promptString(p promptType) string {
+	switch p {
+	case numberOfPlayersPrompt:
+		return "How many players?"
+	case playerNamePrompt:
+		return fmt.Sprintf("What is player %d's name?", currentPlayerToName+1)
+	case startingChipsPrompt:
+		return "How many chips to start?"
+	default:
+		return "Whaa?"
+	}
 }
