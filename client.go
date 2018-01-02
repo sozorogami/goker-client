@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/sozorogami/goker"
+
 	ui "github.com/gizak/termui"
 )
 
@@ -21,6 +23,7 @@ var numberOfPlayers int
 var currentPlayerToName int
 var playerNames []string
 var startingChips int
+var game *goker.GameState
 
 func main() {
 	err := ui.Init()
@@ -35,9 +38,17 @@ func main() {
 	p.BorderFg = ui.ColorCyan
 	p.Height = 3
 
+	events := ui.NewPar("")
+	events.TextFgColor = ui.ColorGreen
+	events.BorderLabel = "Events"
+	events.Height = 12
+
 	ui.Body.AddRows(
 		ui.NewRow(
-			ui.NewCol(12, 0, p),
+			ui.NewCol(5, 0, events),
+		),
+		ui.NewRow(
+			ui.NewCol(7, 0, p),
 		),
 	)
 
@@ -62,7 +73,7 @@ func main() {
 		} else if isAlphanumeric(newInput) {
 			inputString = inputString + newInput
 		} else {
-			inputString = inputString + "!" + newInput + "!"
+			inputString = inputString + "<!" + newInput + "!>"
 		}
 
 		p.Text = inputString + "_"
@@ -75,6 +86,9 @@ func main() {
 		inputString = ""
 		p.Text = "_"
 		p.BorderLabel = promptString(currentPrompt)
+		if game != nil {
+			draw(game)
+		}
 		ui.Render(ui.Body)
 	})
 
@@ -100,6 +114,10 @@ func handleInput(s string) {
 	case startingChipsPrompt:
 		getStartingChips(s)
 	}
+
+}
+
+func draw(game *goker.GameState) {
 
 }
 
@@ -131,6 +149,12 @@ func getStartingChips(s string) {
 		startingChips = -1
 	} else {
 		startingChips = val
+		players := make([]*goker.Player, numberOfPlayers)
+		for i, name := range playerNames {
+			players[i] = goker.NewPlayer(name)
+		}
+		rules := goker.GameRules{SmallBlind: 25, BigBlind: 50}
+		game = goker.NewGame(players, rules, goker.NewDeck())
 		currentPrompt++
 	}
 }
