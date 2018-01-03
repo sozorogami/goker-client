@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/sozorogami/goker"
 
@@ -45,10 +46,10 @@ func main() {
 
 	ui.Body.AddRows(
 		ui.NewRow(
-			ui.NewCol(5, 0, events),
+			ui.NewCol(4, 0, events),
 		),
 		ui.NewRow(
-			ui.NewCol(7, 0, p),
+			ui.NewCol(8, 0, p),
 		),
 	)
 
@@ -87,7 +88,7 @@ func main() {
 		p.Text = "_"
 		p.BorderLabel = promptString(currentPrompt)
 		if game != nil {
-			draw(game)
+			draw(*game)
 		}
 		ui.Render(ui.Body)
 	})
@@ -117,8 +118,96 @@ func handleInput(s string) {
 
 }
 
-func draw(game *goker.GameState) {
+func draw(game goker.GameState) {
+	ui.Clear()
+	ui.Body.Rows = []*ui.Row{}
 
+	playerRowCount := (len(game.Players) + 1) / 2
+	lastRowSingleColumn := len(game.Players)%2 != 0
+	for i := 0; i < playerRowCount; i++ {
+		var row *ui.Row
+		if i == playerRowCount-1 && lastRowSingleColumn {
+			player := game.Players[2*i]
+			row = ui.NewRow(
+				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player, game))),
+			)
+		} else {
+			player1 := game.Players[2*i]
+			player2 := game.Players[2*i+1]
+			row = ui.NewRow(
+				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player1, game))),
+				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player2, game))),
+			)
+		}
+		ui.Body.AddRows(
+			row,
+		)
+	}
+	ui.Body.Align()
+	ui.Render(ui.Body)
+}
+
+type playerData struct {
+	name, status          string
+	chipCount, currentBet int
+	isActive, isDealer    bool
+	hand                  string
+}
+
+func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData {
+	var statusString string
+
+	switch player.Status {
+	case goker.Active:
+		statusString = "Active"
+	case goker.AllIn:
+		statusString = "All In"
+	case goker.Folded:
+		statusString = "Folded"
+	case goker.Eliminated:
+		statusString = "Eliminated"
+	}
+
+	cardStrings := []string{}
+	for _, card := range player.HoleCards {
+		cardStrings = append(cardStrings, card.String())
+	}
+	handString := strings.Join(cardStrings, " ")
+
+	data := playerData{
+		name:       player.Name,
+		status:     statusString,
+		chipCount:  player.Chips,
+		currentBet: player.CurrentBet,
+		isActive:   state.Action == player,
+		isDealer:   state.Dealer == player,
+		hand:       handString,
+	}
+
+	return data
+}
+
+func playerBox(data playerData) *ui.Par {
+	p := ui.NewPar(playerInfoString(data))
+	p.TextFgColor = ui.ColorWhite
+
+	if data.isDealer {
+		p.BorderLabel = data.name + " (Dealer)"
+	} else {
+		p.BorderLabel = data.name
+	}
+
+	if data.isActive {
+		p.BorderFg = ui.ColorWhite
+	} else {
+		p.BorderFg = ui.ColorBlue
+	}
+	p.Height = 6
+	return p
+}
+
+func playerInfoString(data playerData) string {
+	return fmt.Sprintf("Status: %s\nChips: %d\nBet: %d\nHand: %s", data.status, data.chipCount, data.currentBet, data.hand)
 }
 
 func getNumberOfPlayers(s string) {
@@ -152,7 +241,10 @@ func getStartingChips(s string) {
 		players := make([]*goker.Player, numberOfPlayers)
 		for i, name := range playerNames {
 			players[i] = goker.NewPlayer(name)
+			players[i].Chips = startingChips
 		}
+		goker.SeatPlayers(players)
+
 		rules := goker.GameRules{SmallBlind: 25, BigBlind: 50}
 		game = goker.NewGame(players, rules, goker.NewDeck())
 		currentPrompt++
