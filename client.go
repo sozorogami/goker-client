@@ -26,6 +26,9 @@ var playerNames []string
 var startingChips int
 var game *goker.GameState
 
+var prompt *ui.Par
+var events *ui.Par
+
 func main() {
 	err := ui.Init()
 	if err != nil {
@@ -33,13 +36,13 @@ func main() {
 	}
 	defer ui.Close()
 
-	p := ui.NewPar("_")
-	p.TextFgColor = ui.ColorWhite
-	p.BorderLabel = promptString(currentPrompt)
-	p.BorderFg = ui.ColorCyan
-	p.Height = 3
+	prompt = ui.NewPar("_")
+	prompt.TextFgColor = ui.ColorWhite
+	prompt.BorderLabel = promptString(currentPrompt)
+	prompt.BorderFg = ui.ColorCyan
+	prompt.Height = 3
 
-	events := ui.NewPar("")
+	events = ui.NewPar("")
 	events.TextFgColor = ui.ColorGreen
 	events.BorderLabel = "Events"
 	events.Height = 12
@@ -49,7 +52,7 @@ func main() {
 			ui.NewCol(4, 0, events),
 		),
 		ui.NewRow(
-			ui.NewCol(8, 0, p),
+			ui.NewCol(8, 0, prompt),
 		),
 	)
 
@@ -77,7 +80,7 @@ func main() {
 			inputString = inputString + "<!" + newInput + "!>"
 		}
 
-		p.Text = inputString + "_"
+		prompt.Text = inputString + "_"
 
 		ui.Render(ui.Body)
 	})
@@ -85,8 +88,8 @@ func main() {
 	ui.Handle("/sys/kbd/<enter>", func(ui.Event) {
 		handleInput(inputString)
 		inputString = ""
-		p.Text = "_"
-		p.BorderLabel = promptString(currentPrompt)
+		prompt.Text = "_"
+		prompt.BorderLabel = promptString(currentPrompt)
 		if game != nil {
 			draw(*game)
 		}
@@ -94,7 +97,6 @@ func main() {
 	})
 
 	ui.Handle("/sys/wnd/resize", func(ui.Event) {
-		p.BorderLabel = "Meow"
 		ui.Body.Align()
 		ui.Render(ui.Body)
 	})
@@ -125,23 +127,23 @@ func draw(game goker.GameState) {
 	playerRowCount := (len(game.Players) + 1) / 2
 	lastRowSingleColumn := len(game.Players)%2 != 0
 	for i := 0; i < playerRowCount; i++ {
-		var row *ui.Row
+		var cols = []*ui.Row{}
 		if i == playerRowCount-1 && lastRowSingleColumn {
 			player := game.Players[2*i]
-			row = ui.NewRow(
-				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player, game))),
-			)
+			cols = append(cols, ui.NewCol(4, 0, playerBox(playerDataForPlayer(player, game))))
 		} else {
 			player1 := game.Players[2*i]
 			player2 := game.Players[2*i+1]
-			row = ui.NewRow(
+			cols = append(cols,
 				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player1, game))),
 				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player2, game))),
 			)
 		}
-		ui.Body.AddRows(
-			row,
-		)
+		if i == 0 {
+			cols = append(cols, ui.NewCol(4, 0, events))
+		}
+		ui.Body.AddRows(ui.NewRow(cols...))
+		ui.Body.AddRows(ui.NewRow(ui.NewCol(8, 0, prompt)))
 	}
 	ui.Body.Align()
 	ui.Render(ui.Body)
