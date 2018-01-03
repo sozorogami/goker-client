@@ -83,7 +83,7 @@ func main() {
 
 		prompt.Text = inputString + "_"
 
-		ui.Render(ui.Body)
+		ui.Render(prompt)
 	})
 
 	ui.Handle("/sys/kbd/<enter>", func(ui.Event) {
@@ -159,29 +159,41 @@ func draw(game goker.GameState) {
 	ui.Clear()
 	ui.Body.Rows = []*ui.Row{}
 
-	playerRowCount := (len(game.Players) + 1) / 2
-	lastRowSingleColumn := len(game.Players)%2 != 0
-	for i := 0; i < playerRowCount; i++ {
-		var cols = []*ui.Row{}
-		if i == playerRowCount-1 && lastRowSingleColumn {
-			player := game.Players[2*i]
-			cols = append(cols, ui.NewCol(4, 0, playerBox(playerDataForPlayer(player, game))))
-		} else {
-			player1 := game.Players[2*i]
-			player2 := game.Players[2*i+1]
-			cols = append(cols,
-				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player1, game))),
-				ui.NewCol(4, 0, playerBox(playerDataForPlayer(player2, game))),
-			)
-		}
-		if i == 0 {
-			cols = append(cols, ui.NewCol(4, 0, events))
-		}
-		ui.Body.AddRows(ui.NewRow(cols...))
-		ui.Body.AddRows(ui.NewRow(ui.NewCol(8, 0, prompt)))
+	boxes := []*ui.Par{}
+
+	playerCount := len(game.Players)
+
+	for i := 0; i < playerCount; i++ {
+		row := i / 2
+		col := i % 2
+		box := playerBox(playerDataForPlayer(game.Players[i], game), row, col)
+		boxes = append(boxes, box)
 	}
-	ui.Body.Align()
-	ui.Render(ui.Body)
+	for _, box := range boxes {
+		ui.Render(box)
+	}
+
+	belowPlayers := (playerCount + 1) / 2 * pbHeight
+
+	board := boardBox(game.Board, belowPlayers)
+	ui.Render(board)
+
+	var chips int
+	if len(game.Pots) > 0 {
+		chips = game.Pots[0].Value
+	}
+
+	pot := potBox(chips, belowPlayers)
+	ui.Render(pot)
+
+	prompt.Y = belowPlayers + board.Height + 1
+	prompt.Width = pbWidth * 2
+	ui.Render(prompt)
+
+	events.X = pbWidth * 2
+	events.Y = 0
+	events.Height = prompt.Y + prompt.Height
+	ui.Render(events)
 }
 
 type playerData struct {
@@ -224,9 +236,74 @@ func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData
 	return data
 }
 
-func playerBox(data playerData) *ui.Par {
+const (
+	pbHeight = 6
+	pbWidth  = 25
+)
+
+func potBox(chips, y int) *ui.Par {
+	chipString := strconv.Itoa(chips)
+	padding := (pbWidth - len(chipString) - 2) / 2
+	padString := strings.Repeat(" ", padding)
+
+	content := "\n" + padString + chipString
+
+	box := ui.NewPar(content)
+	box.BorderLabel = "Pot"
+	box.BorderBg = ui.ColorGreen
+	box.BorderFg = ui.ColorWhite
+	box.BorderLabelBg = ui.ColorGreen
+	box.BorderLabelFg = ui.ColorWhite
+	box.Bg = ui.ColorWhite
+	box.TextBgColor = ui.ColorWhite
+	box.TextFgColor = ui.ColorBlack
+	box.Width = pbWidth
+	box.Height = 5
+	box.X = pbWidth
+	box.Y = y
+	return box
+}
+
+func boardBox(cards goker.CardSet, y int) *ui.Par {
+	box := ui.NewPar(cardsStringForCards(cards))
+	box.BorderLabel = "Board"
+	box.BorderBg = ui.ColorRed
+	box.BorderFg = ui.ColorWhite
+	box.BorderLabelBg = ui.ColorRed
+	box.BorderLabelFg = ui.ColorWhite
+	box.Bg = ui.ColorWhite
+	box.TextBgColor = ui.ColorWhite
+	box.TextFgColor = ui.ColorBlack
+	box.Width = pbWidth
+	box.Height = 5
+	box.X = 0
+	box.Y = y
+	return box
+}
+
+func cardsStringForCards(cards goker.CardSet) string {
+	cardStrings := []string{}
+	for _, card := range cards {
+		cardStrings = append(cardStrings, card.String())
+	}
+
+	cardCount := len(cards)
+	for i := 5 - cardCount; i > 0; i-- {
+		cardStrings = append(cardStrings, "??")
+	}
+
+	padding := "    "
+
+	return "\n" + padding + strings.Join(cardStrings, " ")
+}
+
+func playerBox(data playerData, row, col int) *ui.Par {
 	p := ui.NewPar(playerInfoString(data))
 	p.TextFgColor = ui.ColorWhite
+	p.Height = pbHeight
+	p.Width = pbWidth
+	p.X = pbWidth * col
+	p.Y = pbHeight * row
 
 	if data.isDealer {
 		p.BorderLabel = data.name + " (Dealer)"
@@ -239,7 +316,6 @@ func playerBox(data playerData) *ui.Par {
 	} else {
 		p.BorderFg = ui.ColorBlue
 	}
-	p.Height = 6
 	return p
 }
 
@@ -310,5 +386,5 @@ func actionPromptForGameState(state *goker.GameState) string {
 	} else {
 		possibleActions = "(C)heck, (B)et or (F)old?"
 	}
-	return "It is " + state.Action.Name + "'s turn. " + possibleActions
+	return state.Action.Name + ": " + possibleActions
 }
