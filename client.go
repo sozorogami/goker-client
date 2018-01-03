@@ -17,6 +17,7 @@ const (
 	numberOfPlayersPrompt promptType = iota
 	playerNamePrompt
 	startingChipsPrompt
+	actionPrompt
 )
 
 var currentPrompt promptType
@@ -38,7 +39,7 @@ func main() {
 
 	prompt = ui.NewPar("_")
 	prompt.TextFgColor = ui.ColorWhite
-	prompt.BorderLabel = promptString(currentPrompt)
+	prompt.BorderLabel = promptString(currentPrompt, game)
 	prompt.BorderFg = ui.ColorCyan
 	prompt.Height = 3
 
@@ -89,7 +90,7 @@ func main() {
 		handleInput(inputString)
 		inputString = ""
 		prompt.Text = "_"
-		prompt.BorderLabel = promptString(currentPrompt)
+		prompt.BorderLabel = promptString(currentPrompt, game)
 		if game != nil {
 			draw(*game)
 		}
@@ -116,8 +117,42 @@ func handleInput(s string) {
 		getPlayerName(s)
 	case startingChipsPrompt:
 		getStartingChips(s)
+	case actionPrompt:
+		new := parseAction(s, *game)
+		game = &new
+	}
+}
+
+func parseAction(input string, state goker.GameState) goker.GameState {
+	player := state.Action
+	value := 0
+	var actionType goker.ActionType
+	var err error
+
+	switch {
+	case input == "C":
+		actionType = goker.CheckCall
+	case input == "F":
+		actionType = goker.Fold
+	case strings.HasPrefix(input, "B"):
+		actionType = goker.BetRaise
+
+		amtStr := strings.TrimPrefix(input, "B")
+		value, err = strconv.Atoi(amtStr)
+		if err != nil {
+			panic("Bad numeric value")
+		}
+	default:
+		panic("Unable to parse string")
 	}
 
+	state, err = goker.Transition(state, goker.Action{Player: player, ActionType: actionType, Value: value})
+
+	if err != nil {
+		panic("Advance failed: " + err.Error())
+	}
+
+	return state
 }
 
 func draw(game goker.GameState) {
@@ -253,7 +288,7 @@ func getStartingChips(s string) {
 	}
 }
 
-func promptString(p promptType) string {
+func promptString(p promptType, state *goker.GameState) string {
 	switch p {
 	case numberOfPlayersPrompt:
 		return "How many players?"
@@ -261,7 +296,19 @@ func promptString(p promptType) string {
 		return fmt.Sprintf("What is player %d's name?", currentPlayerToName+1)
 	case startingChipsPrompt:
 		return "How many chips to start?"
+	case actionPrompt:
+		return actionPromptForGameState(state)
 	default:
 		return "Whaa?"
 	}
+}
+
+func actionPromptForGameState(state *goker.GameState) string {
+	var possibleActions string
+	if state.BetToMatch > 0 {
+		possibleActions = "(C)all, (R)aise or (F)old?"
+	} else {
+		possibleActions = "(C)heck, (B)et or (F)old?"
+	}
+	return "It is " + state.Action.Name + "'s turn. " + possibleActions
 }
