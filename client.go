@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -118,12 +119,15 @@ func handleInput(s string) {
 	case startingChipsPrompt:
 		getStartingChips(s)
 	case actionPrompt:
-		new := parseAction(s, *game)
+		new, err := parseAction(s, *game)
+		if err != nil {
+			events.Text = events.Text + fmt.Sprintf("%s", err) + "\n"
+		}
 		game = &new
 	}
 }
 
-func parseAction(input string, state goker.GameState) goker.GameState {
+func parseAction(input string, state goker.GameState) (goker.GameState, error) {
 	player := state.Action
 	value := 0
 	var actionType goker.ActionType
@@ -134,25 +138,26 @@ func parseAction(input string, state goker.GameState) goker.GameState {
 		actionType = goker.CheckCall
 	case input == "F":
 		actionType = goker.Fold
-	case strings.HasPrefix(input, "B"):
+	case strings.HasPrefix(input, "B") || strings.HasPrefix(input, "R"):
 		actionType = goker.BetRaise
 
 		amtStr := strings.TrimPrefix(input, "B")
+		amtStr = strings.TrimPrefix(input, "R")
 		value, err = strconv.Atoi(amtStr)
 		if err != nil {
-			panic("Bad numeric value")
+			return state, errors.New("Bad numeric value")
 		}
 	default:
-		panic("Unable to parse string")
+		return state, errors.New("Unable to parse string")
 	}
 
 	state, err = goker.Transition(state, goker.Action{Player: player, ActionType: actionType, Value: value})
 
 	if err != nil {
-		panic("Advance failed: " + err.Error())
+		return state, errors.New("Advance failed: " + err.Error())
 	}
 
-	return state
+	return state, nil
 }
 
 func draw(game goker.GameState) {
