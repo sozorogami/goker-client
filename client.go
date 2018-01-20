@@ -202,26 +202,29 @@ func draw(game goker.GameState) {
 }
 
 type playerData struct {
-	name, status          string
+	name                  string
+	status                goker.PlayerStatus
 	chipCount, currentBet int
 	isActive, isDealer    bool
 	hand                  string
 }
 
-func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData {
-	var statusString string
-
-	switch player.Status {
+func stringForPlayerStatus(status goker.PlayerStatus) string {
+	switch status {
 	case goker.Active:
-		statusString = "Active"
+		return "Active"
 	case goker.AllIn:
-		statusString = "All In"
+		return "All In"
 	case goker.Folded:
-		statusString = "Folded"
+		return "Folded"
 	case goker.Eliminated:
-		statusString = "Eliminated"
+		return "Eliminated"
+	default:
+		return ""
 	}
+}
 
+func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData {
 	cardStrings := []string{}
 	for _, card := range player.HoleCards {
 		cardStrings = append(cardStrings, card.String())
@@ -230,7 +233,7 @@ func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData
 
 	data := playerData{
 		name:       player.Name,
-		status:     statusString,
+		status:     player.Status,
 		chipCount:  player.Chips,
 		currentBet: player.CurrentBet,
 		isActive:   state.Action == player,
@@ -319,13 +322,22 @@ func playerBox(data playerData, row, col int) *ui.Par {
 	if data.isActive {
 		p.BorderFg = ui.ColorWhite
 	} else {
-		p.BorderFg = ui.ColorBlue
+		switch data.status {
+		case goker.Active:
+			p.BorderFg = ui.ColorBlue
+		case goker.Folded:
+			p.BorderFg = ui.ColorRGB(1, 1, 1)
+		case goker.Eliminated:
+			p.BorderFg = ui.ColorBlack
+		case goker.AllIn:
+			p.BorderFg = ui.ColorYellow
+		}
 	}
 	return p
 }
 
 func playerInfoString(data playerData) string {
-	return fmt.Sprintf("Status: %s\nChips: %d\nBet: %d\nHand: %s", data.status, data.chipCount, data.currentBet, data.hand)
+	return fmt.Sprintf("Status: %s\nChips: %d\nBet: %d\nHand: %s", stringForPlayerStatus(data.status), data.chipCount, data.currentBet, data.hand)
 }
 
 func getNumberOfPlayers(s string) {
