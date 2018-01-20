@@ -31,6 +31,9 @@ var game *goker.GameState
 var prompt *ui.Par
 var events *ui.Par
 
+var board *ui.Par
+var eventsText []string
+
 func main() {
 	err := ui.Init()
 	if err != nil {
@@ -94,6 +97,7 @@ func main() {
 		prompt.BorderLabel = promptString(currentPrompt, game)
 		if game != nil {
 			draw(*game)
+			parseEvents(game.Events)
 		}
 		ui.Render(ui.Body)
 	})
@@ -104,6 +108,30 @@ func main() {
 	})
 
 	ui.Loop()
+}
+
+func parseEvents(events []interface{}) {
+	for _, event := range events {
+		switch event.(type) {
+		case goker.DrawEvent:
+			draw := event.(goker.DrawEvent)
+			for _, card := range draw.Cards {
+				eventsText = append(eventsText, fmt.Sprintf("Dealer revealed %s", card))
+			}
+		default:
+			eventsText = append(eventsText, "Ello")
+		}
+	}
+}
+
+func updateEventText() {
+	if len(eventsText) > 10 {
+		eventsText = eventsText[len(eventsText)-9:]
+	}
+	events.Text = ""
+	for _, line := range eventsText {
+		events.Text = events.Text + fmt.Sprintf("%s", line) + "\n"
+	}
 }
 
 func handleInput(s string) {
@@ -121,7 +149,7 @@ func handleInput(s string) {
 	case actionPrompt:
 		new, err := parseAction(s, *game)
 		if err != nil {
-			events.Text = events.Text + fmt.Sprintf("%s", err) + "\n"
+			eventsText = append(eventsText, fmt.Sprintf("%s", err))
 		}
 		game = &new
 	}
@@ -142,7 +170,7 @@ func parseAction(input string, state goker.GameState) (goker.GameState, error) {
 		actionType = goker.BetRaise
 
 		amtStr := strings.TrimPrefix(input, "B")
-		amtStr = strings.TrimPrefix(input, "R")
+		amtStr = strings.TrimPrefix(amtStr, "R")
 		value, err = strconv.Atoi(amtStr)
 		if err != nil {
 			return state, errors.New("Bad numeric value")
@@ -180,7 +208,7 @@ func draw(game goker.GameState) {
 
 	belowPlayers := (playerCount + 1) / 2 * pbHeight
 
-	board := boardBox(game.Board, belowPlayers)
+	board = boardBox(game.Board, belowPlayers)
 	ui.Render(board)
 
 	var chips int
@@ -198,6 +226,7 @@ func draw(game goker.GameState) {
 	events.X = pbWidth * 2
 	events.Y = 0
 	events.Height = prompt.Y + prompt.Height
+	updateEventText()
 	ui.Render(events)
 }
 
