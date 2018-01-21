@@ -214,13 +214,10 @@ func draw(game goker.GameState) {
 	boardView.SetY(belowPlayers)
 	boardView.Render()
 
-	var chips int
-	if len(game.Pots) > 0 {
-		chips = game.Pots[0].Value
-	}
-
-	pot := potBox(chips, belowPlayers)
-	ui.Render(pot)
+	pot := NewPotBox()
+	pot.SetY(belowPlayers)
+	pot.SetPots(game.Pots)
+	pot.Render()
 
 	prompt.Y = belowPlayers + boardView.Height() + 1
 	prompt.Width = pbWidth * 2
@@ -280,29 +277,6 @@ const (
 	pbHeight = 6
 	pbWidth  = 25
 )
-
-func potBox(chips, y int) *ui.Par {
-	chipString := strconv.Itoa(chips)
-	padding := (pbWidth - len(chipString) - 2) / 2
-	padString := strings.Repeat(" ", padding)
-
-	content := "\n" + padString + chipString
-
-	box := ui.NewPar(content)
-	box.BorderLabel = "Pot"
-	box.BorderBg = ui.ColorGreen
-	box.BorderFg = ui.ColorWhite
-	box.BorderLabelBg = ui.ColorGreen
-	box.BorderLabelFg = ui.ColorWhite
-	box.Bg = ui.ColorWhite
-	box.TextBgColor = ui.ColorWhite
-	box.TextFgColor = ui.ColorBlack
-	box.Width = pbWidth
-	box.Height = 5
-	box.X = pbWidth
-	box.Y = y
-	return box
-}
 
 func cardsStringForCards(cards goker.CardSet) string {
 	cardStrings := []string{}
