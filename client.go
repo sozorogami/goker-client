@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sozorogami/goker"
 
@@ -31,7 +32,7 @@ var game *goker.GameState
 var prompt *ui.Par
 var events *ui.Par
 
-var board *ui.Par
+var boardView *BoardView
 var eventsText []string
 
 func main() {
@@ -40,6 +41,8 @@ func main() {
 		panic(err)
 	}
 	defer ui.Close()
+
+	boardView = NewBoardView()
 
 	prompt = ui.NewPar("_")
 	prompt.TextFgColor = ui.ColorWhite
@@ -97,7 +100,6 @@ func main() {
 		prompt.BorderLabel = promptString(currentPrompt, game)
 		if game != nil {
 			draw(*game)
-			parseEvents(game.Events)
 		}
 		ui.Render(ui.Body)
 	})
@@ -115,9 +117,7 @@ func parseEvents(events []interface{}) {
 		switch event.(type) {
 		case goker.DrawEvent:
 			draw := event.(goker.DrawEvent)
-			for _, card := range draw.Cards {
-				eventsText = append(eventsText, fmt.Sprintf("Dealer revealed %s", card))
-			}
+			boardView.AnimateAppendCards(draw.Cards, time.Second, func() {})
 		default:
 			eventsText = append(eventsText, "Ello")
 		}
@@ -150,8 +150,10 @@ func handleInput(s string) {
 		new, err := parseAction(s, *game)
 		if err != nil {
 			eventsText = append(eventsText, fmt.Sprintf("%s", err))
+		} else {
+			game = &new
+			parseEvents(game.Events)
 		}
-		game = &new
 	}
 }
 
@@ -208,8 +210,9 @@ func draw(game goker.GameState) {
 
 	belowPlayers := (playerCount + 1) / 2 * pbHeight
 
-	board = boardBox(game.Board, belowPlayers)
-	ui.Render(board)
+	boardView.SetCards(game.Board)
+	boardView.SetY(belowPlayers)
+	boardView.Render()
 
 	var chips int
 	if len(game.Pots) > 0 {
@@ -219,7 +222,7 @@ func draw(game goker.GameState) {
 	pot := potBox(chips, belowPlayers)
 	ui.Render(pot)
 
-	prompt.Y = belowPlayers + board.Height + 1
+	prompt.Y = belowPlayers + boardView.Height() + 1
 	prompt.Width = pbWidth * 2
 	ui.Render(prompt)
 
@@ -297,23 +300,6 @@ func potBox(chips, y int) *ui.Par {
 	box.Width = pbWidth
 	box.Height = 5
 	box.X = pbWidth
-	box.Y = y
-	return box
-}
-
-func boardBox(cards goker.CardSet, y int) *ui.Par {
-	box := ui.NewPar(cardsStringForCards(cards))
-	box.BorderLabel = "Board"
-	box.BorderBg = ui.ColorRed
-	box.BorderFg = ui.ColorWhite
-	box.BorderLabelBg = ui.ColorRed
-	box.BorderLabelFg = ui.ColorWhite
-	box.Bg = ui.ColorWhite
-	box.TextBgColor = ui.ColorWhite
-	box.TextFgColor = ui.ColorBlack
-	box.Width = pbWidth
-	box.Height = 5
-	box.X = 0
 	box.Y = y
 	return box
 }
