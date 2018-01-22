@@ -30,10 +30,9 @@ var startingChips int
 var game *goker.GameState
 
 var prompt *ui.Par
-var events *ui.Par
+var console *ConsoleView
 
 var boardView *BoardView
-var eventsText []string
 
 func main() {
 	err := ui.Init()
@@ -49,24 +48,13 @@ func main() {
 	prompt.BorderLabel = promptString(currentPrompt, game)
 	prompt.BorderFg = ui.ColorCyan
 	prompt.Height = 3
+	prompt.Width = 40
+	prompt.X = 0
+	prompt.Y = 0
 
-	events = ui.NewPar("")
-	events.TextFgColor = ui.ColorGreen
-	events.BorderLabel = "Events"
-	events.Height = 12
+	console = NewConsoleView()
 
-	ui.Body.AddRows(
-		ui.NewRow(
-			ui.NewCol(4, 0, events),
-		),
-		ui.NewRow(
-			ui.NewCol(8, 0, prompt),
-		),
-	)
-
-	ui.Body.Align()
-
-	ui.Render(ui.Body)
+	ui.Render(prompt)
 
 	var inputString string
 
@@ -101,7 +89,7 @@ func main() {
 		if game != nil {
 			draw(*game)
 		}
-		ui.Render(ui.Body)
+		ui.Render(prompt)
 	})
 
 	ui.Handle("/sys/wnd/resize", func(ui.Event) {
@@ -118,19 +106,7 @@ func parseEvents(events []interface{}) {
 		case goker.DrawEvent:
 			draw := event.(goker.DrawEvent)
 			boardView.AnimateAppendCards(draw.Cards, time.Second, func() {})
-		default:
-			eventsText = append(eventsText, "Ello")
 		}
-	}
-}
-
-func updateEventText() {
-	if len(eventsText) > 10 {
-		eventsText = eventsText[len(eventsText)-9:]
-	}
-	events.Text = ""
-	for _, line := range eventsText {
-		events.Text = events.Text + fmt.Sprintf("%s", line) + "\n"
 	}
 }
 
@@ -149,7 +125,7 @@ func handleInput(s string) {
 	case actionPrompt:
 		new, err := parseAction(s, *game)
 		if err != nil {
-			eventsText = append(eventsText, fmt.Sprintf("%s", err))
+			console.AppendLog(fmt.Sprintf("%s", err))
 		} else {
 			game = &new
 			parseEvents(game.Events)
@@ -223,11 +199,8 @@ func draw(game goker.GameState) {
 	prompt.Width = pbWidth * 2
 	ui.Render(prompt)
 
-	events.X = pbWidth * 2
-	events.Y = 0
-	events.Height = prompt.Y + prompt.Height
-	updateEventText()
-	ui.Render(events)
+	console.SetHeight(prompt.Y + prompt.Height)
+	console.Render()
 }
 
 type playerData struct {
