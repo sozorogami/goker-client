@@ -13,7 +13,7 @@ type PotView struct {
 	pots []*goker.Pot
 }
 
-func NewPotBox() *PotView {
+func NewPotView() *PotView {
 	box := ui.NewPar("0")
 	box.BorderLabel = "Pot"
 	box.BorderBg = ui.ColorGreen
@@ -39,7 +39,7 @@ func (pv *PotView) SetY(y int) {
 	pv.view.Y = y
 }
 
-func (pv *PotView) Render() {
+func (pv PotView) Render() {
 	ui.Render(pv.view)
 }
 

@@ -31,7 +31,7 @@ var game *goker.GameState
 
 var prompt *ui.Par
 var console *ConsoleView
-
+var playersView *PlayersView
 var boardView *BoardView
 
 func main() {
@@ -170,27 +170,16 @@ func draw(game goker.GameState) {
 	ui.Clear()
 	ui.Body.Rows = []*ui.Row{}
 
-	boxes := []*ui.Par{}
+	playersView = NewPlayersView(playerDataFromGameState(game))
+	playersView.Render()
 
-	playerCount := len(game.Players)
-
-	for i := 0; i < playerCount; i++ {
-		row := i / 2
-		col := i % 2
-		box := playerBox(playerDataForPlayer(game.Players[i], game), row, col)
-		boxes = append(boxes, box)
-	}
-	for _, box := range boxes {
-		ui.Render(box)
-	}
-
-	belowPlayers := (playerCount + 1) / 2 * pbHeight
+	belowPlayers := playersView.Height()
 
 	boardView.SetCards(game.Board)
 	boardView.SetY(belowPlayers)
 	boardView.Render()
 
-	pot := NewPotBox()
+	pot := NewPotView()
 	pot.SetY(belowPlayers)
 	pot.SetPots(game.Pots)
 	pot.Render()
@@ -203,104 +192,10 @@ func draw(game goker.GameState) {
 	console.Render()
 }
 
-type playerData struct {
-	name                  string
-	status                goker.PlayerStatus
-	chipCount, currentBet int
-	isActive, isDealer    bool
-	hand                  string
-}
-
-func stringForPlayerStatus(status goker.PlayerStatus) string {
-	switch status {
-	case goker.Active:
-		return "Active"
-	case goker.AllIn:
-		return "All In"
-	case goker.Folded:
-		return "Folded"
-	case goker.Eliminated:
-		return "Eliminated"
-	default:
-		return ""
-	}
-}
-
-func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData {
-	cardStrings := []string{}
-	for _, card := range player.HoleCards {
-		cardStrings = append(cardStrings, card.String())
-	}
-	handString := strings.Join(cardStrings, " ")
-
-	data := playerData{
-		name:       player.Name,
-		status:     player.Status,
-		chipCount:  player.Chips,
-		currentBet: player.CurrentBet,
-		isActive:   state.Action == player,
-		isDealer:   state.Dealer == player,
-		hand:       handString,
-	}
-
-	return data
-}
-
 const (
 	pbHeight = 6
 	pbWidth  = 25
 )
-
-func cardsStringForCards(cards goker.CardSet) string {
-	cardStrings := []string{}
-	for _, card := range cards {
-		cardStrings = append(cardStrings, card.String())
-	}
-
-	cardCount := len(cards)
-	for i := 5 - cardCount; i > 0; i-- {
-		cardStrings = append(cardStrings, "??")
-	}
-
-	padding := "    "
-
-	return "\n" + padding + strings.Join(cardStrings, " ")
-}
-
-func playerBox(data playerData, row, col int) *ui.Par {
-	p := ui.NewPar(playerInfoString(data))
-	p.TextFgColor = ui.ColorWhite
-	p.Height = pbHeight
-	p.Width = pbWidth
-	p.X = pbWidth * col
-	p.Y = pbHeight * row
-
-	if data.isDealer {
-		p.BorderLabel = data.name + " (Dealer)"
-	} else {
-		p.BorderLabel = data.name
-	}
-
-	if data.isActive {
-		p.BorderFg = ui.ColorWhite
-	} else {
-		switch data.status {
-		case goker.Active:
-			p.BorderFg = ui.ColorBlue
-		case goker.Folded:
-			p.BorderFg = ui.ColorRGB(1, 1, 1)
-		case goker.Eliminated:
-			p.BorderFg = ui.ColorBlack
-		case goker.AllIn:
-			p.BorderFg = ui.ColorYellow
-		}
-	}
-	return p
-}
-
-func playerInfoString(data playerData) string {
-	return fmt.Sprintf("Status: %s\nChips: %d\nBet: %d\nHand: %s", stringForPlayerStatus(data.status), data.chipCount, data.currentBet, data.hand)
-}
 
 func getNumberOfPlayers(s string) {
 	val, err := strconv.Atoi(s)

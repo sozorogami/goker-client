@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
@@ -50,6 +51,22 @@ func (bv *BoardView) AnimateAppendCards(cards goker.CardSet, delay time.Duration
 	}
 }
 
-func (bv *BoardView) Render() {
+func (bv BoardView) Render() {
 	ui.Render(bv.view)
+}
+
+func cardsStringForCards(cards goker.CardSet) string {
+	cardStrings := []string{}
+	for _, card := range cards {
+		cardStrings = append(cardStrings, card.String())
+	}
+
+	cardCount := len(cards)
+	for i := 5 - cardCount; i > 0; i-- {
+		cardStrings = append(cardStrings, "??")
+	}
+
+	padding := "    "
+
+	return "\n" + padding + strings.Join(cardStrings, " ")
 }
