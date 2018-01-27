@@ -13,23 +13,9 @@ import (
 	ui "github.com/gizak/termui"
 )
 
-type promptType int
-
-const (
-	numberOfPlayersPrompt promptType = iota
-	playerNamePrompt
-	startingChipsPrompt
-	actionPrompt
-)
-
-var currentPrompt promptType
-var numberOfPlayers int
-var currentPlayerToName int
-var playerNames []string
-var startingChips int
 var game *goker.GameState
 
-var prompt *ui.Par
+var promptView *PromptView
 var console *ConsoleView
 var playersView *PlayersView
 var boardView *BoardView
@@ -42,19 +28,10 @@ func main() {
 	defer ui.Close()
 
 	boardView = NewBoardView()
-
-	prompt = ui.NewPar("_")
-	prompt.TextFgColor = ui.ColorWhite
-	prompt.BorderLabel = promptString(currentPrompt, game)
-	prompt.BorderFg = ui.ColorCyan
-	prompt.Height = 3
-	prompt.Width = 40
-	prompt.X = 0
-	prompt.Y = 0
-
+	promptView = NewPromptView()
 	console = NewConsoleView()
 
-	ui.Render(prompt)
+	promptView.Render()
 
 	var inputString string
 
@@ -76,20 +53,20 @@ func main() {
 			inputString = inputString + "<!" + newInput + "!>"
 		}
 
-		prompt.Text = inputString + "_"
+		promptView.SetText(inputString + "_")
 
-		ui.Render(prompt)
+		promptView.Render()
 	})
 
 	ui.Handle("/sys/kbd/<enter>", func(ui.Event) {
 		handleInput(inputString)
 		inputString = ""
-		prompt.Text = "_"
-		prompt.BorderLabel = promptString(currentPrompt, game)
+		promptView.SetText("_")
+		promptView.SetHeading(promptString(currentPrompt, game))
 		if game != nil {
 			draw(*game)
 		}
-		ui.Render(prompt)
+		promptView.Render()
 	})
 
 	ui.Handle("/sys/wnd/resize", func(ui.Event) {
@@ -184,11 +161,10 @@ func draw(game goker.GameState) {
 	pot.SetPots(game.Pots)
 	pot.Render()
 
-	prompt.Y = belowPlayers + boardView.Height() + 1
-	prompt.Width = pbWidth * 2
-	ui.Render(prompt)
+	promptView.SetY(belowPlayers + boardView.Height() + 1)
+	promptView.Render()
 
-	console.SetHeight(prompt.Y + prompt.Height)
+	console.SetHeight(promptView.GetY() + promptView.Height())
 	console.Render()
 }
 
@@ -196,69 +172,3 @@ const (
 	pbHeight = 6
 	pbWidth  = 25
 )
-
-func getNumberOfPlayers(s string) {
-	val, err := strconv.Atoi(s)
-	if err != nil || val < 2 || val > 10 {
-		numberOfPlayers = -1
-	} else {
-		numberOfPlayers = val
-		playerNames = make([]string, val)
-		currentPrompt++
-	}
-}
-
-func getPlayerName(s string) {
-	l := len(s)
-	if l > 0 && l < 20 {
-		playerNames[currentPlayerToName] = s
-		currentPlayerToName++
-	}
-	if currentPlayerToName == numberOfPlayers {
-		currentPrompt++
-	}
-}
-
-func getStartingChips(s string) {
-	val, err := strconv.Atoi(s)
-	if err != nil || val <= 0 {
-		startingChips = -1
-	} else {
-		startingChips = val
-		players := make([]*goker.Player, numberOfPlayers)
-		for i, name := range playerNames {
-			players[i] = goker.NewPlayer(name)
-			players[i].Chips = startingChips
-		}
-		goker.SeatPlayers(players)
-
-		rules := goker.GameRules{SmallBlind: 25, BigBlind: 50}
-		game = goker.NewGame(players, rules, goker.NewDeck())
-		currentPrompt++
-	}
-}
-
-func promptString(p promptType, state *goker.GameState) string {
-	switch p {
-	case numberOfPlayersPrompt:
-		return "How many players?"
-	case playerNamePrompt:
-		return fmt.Sprintf("What is player %d's name?", currentPlayerToName+1)
-	case startingChipsPrompt:
-		return "How many chips to start?"
-	case actionPrompt:
-		return actionPromptForGameState(state)
-	default:
-		return "Whaa?"
-	}
-}
-
-func actionPromptForGameState(state *goker.GameState) string {
-	var possibleActions string
-	if state.BetToMatch > 0 {
-		possibleActions = "(C)all, (R)aise or (F)old?"
-	} else {
-		possibleActions = "(C)heck, (B)et or (F)old?"
-	}
-	return state.Action.Name + ": " + possibleActions
-}

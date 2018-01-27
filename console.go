@@ -18,7 +18,6 @@ func NewConsoleView() *ConsoleView {
 	events.BorderLabel = "Events"
 	events.X = pbWidth * 2
 	events.Y = 0
-	events.Height = prompt.Y + prompt.Height
 	events.Width = 40
 	cv := ConsoleView{events, []string{}}
 	return &cv
