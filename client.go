@@ -19,6 +19,7 @@ var promptView *PromptView
 var console *ConsoleView
 var playersView *PlayersView
 var boardView *BoardView
+var potView *PotView
 
 func main() {
 	err := ui.Init()
@@ -30,6 +31,7 @@ func main() {
 	boardView = NewBoardView()
 	promptView = NewPromptView()
 	console = NewConsoleView()
+	potView = NewPotView()
 
 	promptView.Render()
 
@@ -156,10 +158,9 @@ func draw(game goker.GameState) {
 	boardView.SetY(belowPlayers)
 	boardView.Render()
 
-	pot := NewPotView()
-	pot.SetY(belowPlayers)
-	pot.SetPots(game.Pots)
-	pot.Render()
+	potView.SetY(belowPlayers)
+	potView.SetPots(game.Pots)
+	potView.Render()
 
 	promptView.SetY(belowPlayers + boardView.Height() + 1)
 	promptView.Render()
