@@ -28,11 +28,7 @@ func main() {
 	}
 	defer ui.Close()
 
-	boardView = NewBoardView()
 	promptView = NewPromptView()
-	console = NewConsoleView()
-	potView = NewPotView()
-
 	promptView.Render()
 
 	var inputString string
@@ -77,6 +73,13 @@ func main() {
 	})
 
 	ui.Loop()
+}
+
+func initViews() {
+	boardView = NewBoardView()
+	console = NewConsoleView()
+	potView = NewPotView()
+	playersView = NewPlayersView(numberOfPlayers)
 }
 
 func parseEvents(events []interface{}) {
@@ -149,7 +152,7 @@ func draw(game goker.GameState) {
 	ui.Clear()
 	ui.Body.Rows = []*ui.Row{}
 
-	playersView = NewPlayersView(playerDataFromGameState(game))
+	playersView.setData(playerDataFromGameState(game))
 	playersView.Render()
 
 	belowPlayers := playersView.Height()

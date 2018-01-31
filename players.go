@@ -21,18 +21,12 @@ type PlayersView struct {
 	data  []playerData
 }
 
-func NewPlayersView(data []playerData) *PlayersView {
-	boxes := []*ui.Par{}
-	playerCount := len(data)
+func NewPlayersView(numberOfPlayers int) *PlayersView {
+	boxes := []*ui.Par{mainPlayerBox(numberOfPlayers)}
+	boxes = append(boxes, leftPlayerBoxes(numberOfPlayers)...)
+	boxes = append(boxes, rightPlayerBoxes(numberOfPlayers)...)
 
-	for i := 0; i < playerCount; i++ {
-		row := i / 2
-		col := i % 2
-		box := playerBox(data[i], row, col)
-		boxes = append(boxes, box)
-	}
-
-	pv := PlayersView{boxes, data}
+	pv := PlayersView{boxes, make([]playerData, numberOfPlayers)}
 	return &pv
 }
 
@@ -52,6 +46,46 @@ func playerDataFromGameState(state goker.GameState) []playerData {
 		data[i] = playerDataForPlayer(player, state)
 	}
 	return data
+}
+
+func mainPlayerBox(numberOfPlayers int) *ui.Par {
+	y := (numberOfPlayers - 1) / 2 * pbHeight
+	var x int
+	if numberOfPlayers%2 == 1 {
+		x = pbWidth / 2
+	}
+	return emptyPlayerBox(x, y)
+}
+
+func leftPlayerBoxes(numberOfPlayers int) []*ui.Par {
+	count := (numberOfPlayers+1)/2 - 1
+	boxes := make([]*ui.Par, count)
+	for i := count - 1; i >= 0; i-- {
+		y := pbHeight * (count - 1 - i)
+		boxes[i] = emptyPlayerBox(0, y)
+	}
+	return boxes
+}
+
+func rightPlayerBoxes(numberOfPlayers int) []*ui.Par {
+	count := numberOfPlayers / 2
+	boxes := make([]*ui.Par, count)
+	for i := 0; i < count; i++ {
+		y := pbHeight * i
+		x := pbWidth
+		boxes[i] = emptyPlayerBox(x, y)
+	}
+	return boxes
+}
+
+func emptyPlayerBox(x, y int) *ui.Par {
+	p := ui.NewPar("")
+	p.TextFgColor = ui.ColorWhite
+	p.Height = pbHeight
+	p.Width = pbWidth
+	p.X = x
+	p.Y = y
+	return p
 }
 
 func playerDataForPlayer(player *goker.Player, state goker.GameState) playerData {
@@ -89,13 +123,16 @@ func stringForPlayerStatus(status goker.PlayerStatus) string {
 	}
 }
 
-func playerBox(data playerData, row, col int) *ui.Par {
-	p := ui.NewPar(playerInfoString(data))
-	p.TextFgColor = ui.ColorWhite
-	p.Height = pbHeight
-	p.Width = pbWidth
-	p.X = pbWidth * col
-	p.Y = pbHeight * row
+func (pv PlayersView) setData(data []playerData) {
+	pv.data = data
+	for i, datum := range data {
+		pv.setDataForBox(datum, i)
+	}
+}
+
+func (pv PlayersView) setDataForBox(data playerData, boxIdx int) {
+	p := pv.views[boxIdx]
+	p.Text = playerInfoString(data)
 
 	if data.isDealer {
 		p.BorderLabel = data.name + " (Dealer)"
@@ -117,7 +154,6 @@ func playerBox(data playerData, row, col int) *ui.Par {
 			p.BorderFg = ui.ColorYellow
 		}
 	}
-	return p
 }
 
 func playerInfoString(data playerData) string {

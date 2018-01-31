@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	ui "github.com/gizak/termui"
@@ -29,7 +28,6 @@ func (cv *ConsoleView) SetHeight(h int) {
 
 func (cv *ConsoleView) AppendLog(log string) {
 	cv.logs = append(cv.logs, log)
-	fmt.Println(len(cv.logs))
 }
 
 func (cv *ConsoleView) Render() {

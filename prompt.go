@@ -1,10 +1,11 @@
 package main
 
 import (
-  "github.com/sozorogami/goker"
+	"fmt"
+	"strconv"
+
 	ui "github.com/gizak/termui"
-  "strconv"
-  "fmt"
+	"github.com/sozorogami/goker"
 )
 
 type promptType int
@@ -23,44 +24,44 @@ const (
 )
 
 type PromptView struct {
-  view *ui.Par
+	view *ui.Par
 }
 
 func (pv PromptView) Render() {
-  ui.Render(pv.view)
+	ui.Render(pv.view)
 }
 
 func NewPromptView() *PromptView {
-  prompt := ui.NewPar("_")
-  prompt.TextFgColor = ui.ColorWhite
-  prompt.BorderLabel = promptString(currentPrompt, game)
-  prompt.BorderFg = ui.ColorCyan
-  prompt.Height = 3
-  prompt.Width = pbWidth * 2
-  prompt.X = 0
-  prompt.Y = 0
-  pv := PromptView{prompt}
-  return &pv
+	prompt := ui.NewPar("_")
+	prompt.TextFgColor = ui.ColorWhite
+	prompt.BorderLabel = promptString(currentPrompt, game)
+	prompt.BorderFg = ui.ColorCyan
+	prompt.Height = 3
+	prompt.Width = pbWidth * 2
+	prompt.X = 0
+	prompt.Y = 0
+	pv := PromptView{prompt}
+	return &pv
 }
 
 func (pv PromptView) SetText(text string) {
-  pv.view.Text = text
+	pv.view.Text = text
 }
 
 func (pv PromptView) SetHeading(text string) {
-  pv.view.BorderLabel = text
+	pv.view.BorderLabel = text
 }
 
 func (pv PromptView) SetY(y int) {
-  pv.view.Y = y
+	pv.view.Y = y
 }
 
 func (pv PromptView) GetY() int {
-  return pv.view.Y
+	return pv.view.Y
 }
 
 func (pv PromptView) Height() int {
-  return pv.view.Height
+	return pv.view.Height
 }
 
 func getNumberOfPlayers(s string) {
@@ -70,6 +71,7 @@ func getNumberOfPlayers(s string) {
 	} else {
 		numberOfPlayers = val
 		playerNames = make([]string, val)
+		initViews()
 		currentPrompt++
 	}
 }
